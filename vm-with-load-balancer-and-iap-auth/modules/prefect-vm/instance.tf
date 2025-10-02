@@ -1,0 +1,39 @@
+resource "google_compute_instance" "vm_instance" {
+  name         = var.instance_name
+  machine_type = var.machine_type
+  zone         = var.gcp_zone
+
+  boot_disk {
+    # Non-persistent (deletes with VM)
+    auto_delete = true
+    initialize_params {
+      image = var.boot_disk_image
+      size  = var.boot_disk_size_gb
+      type  = "pd-standard"
+    }
+  }
+
+  network_interface {
+    network    = google_compute_network.vpc.id
+    subnetwork = google_compute_subnetwork.subnet.id
+    access_config {
+      nat_ip = google_compute_address.static_ip_address.address
+    }
+  }
+
+  metadata_startup_script = templatefile("${path.module}/startup.sh.tpl", {
+    environment               = var.environment
+    prefect_postgres_password = var.prefect_postgres_password
+  })
+
+  metadata = {
+    bucket-name = var.bucket_name
+  }
+
+  service_account {
+    email  = google_service_account.prefect_vm_sa.email
+    scopes = ["cloud-platform"]
+  }
+
+  tags = ["${var.environment}-vm", "prefect", "ssh", "vpn", "web", "lb-backend"]
+}

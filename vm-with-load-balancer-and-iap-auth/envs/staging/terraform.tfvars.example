@@ -1,0 +1,40 @@
+# Project
+gcp_project = "some-gcp-project"
+gcp_region  = "some-gcp-region"
+gcp_zone    = "some-gcp-zone"
+
+# Instance
+instance_name     = "some-random-instance-name"
+machine_type      = "some-random-machine-type"
+boot_disk_image   = "some-valid-boot-disk-image"
+boot_disk_size_gb = 120
+
+# Network
+subnet_cidr    = "some-random-ip-range"
+vpn_ip_address = "some-random-ip"
+
+# Environment
+environment = "some-random-environment"
+
+# State bucket
+state_bucket_name = "some-random-state-bucket"
+
+# Storage
+bucket_name = "some-random-prefect-storage-bucket"
+
+# Load balancer
+enable_load_balancer        = true
+prefect_domain              = "some-random-domain"
+reserved_prefect_lb_ip_name = "some-random-lb-ip-name"
+enable_iap                  = true
+iap_brand                   = "some-random-brand"
+prefect_iap_client_id       = "some-random-id"
+prefect_iap_client_secret   = "some-random-secret"
+
+# Authorised users for IAP access
+authorized_users = [
+  "some-random-user@some-random-domain.nothing"
+]
+
+# Prefect postgres
+prefect_postgres_password = "some-random-test-password"

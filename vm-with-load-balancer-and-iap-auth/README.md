@@ -1,0 +1,276 @@
+# GCP Prefect Server Infrastructure
+
+Terraform infrastructure for deploying a Prefect workflow orchestration server on Google Cloud Platform with optional global load balancing and Identity-Aware Proxy (IAP) authentication.
+
+## Overview
+
+This project provisions:
+
+- **Compute Instance**: VM running Prefect server with PostgreSQL backend
+- **Networking**: Custom VPC with configurable subnet and firewall rules
+- **Load Balancer** (optional): Global HTTP(S) load balancer with managed SSL certificates
+- **IAP Authentication** (optional): Zero-trust access control for authorized users
+- **Storage**: Integration with Google Cloud Storage for artifacts
+
+## Architecture
+
+```
+Internet
+    ↓
+Global Load Balancer (HTTPS) → Managed SSL Certificate
+    ↓
+IAP Authentication (optional)
+    ↓
+Backend Service → Instance Group
+    ↓
+VM Instance (Prefect Server:4200)
+    ↓
+PostgreSQL Database
+```
+
+## Project Structure
+
+```
+.
+├── modules/
+│   └── prefect-vm/          # Reusable Terraform module
+│       ├── instance.tf      # VM configuration
+│       ├── network.tf       # VPC, subnet, IPs
+│       ├── loadbalancer.tf  # Global LB resources
+│       ├── firewall.tf      # Security rules
+│       ├── iam.tf           # Service accounts & permissions
+│       ├── startup.sh.tpl   # VM initialization script
+│       ├── vars.tf          # Input variables
+│       └── outputs.tf       # Output values
+│
+└── envs/
+    └── staging/             # Staging environment
+        ├── main.tf          # Module instantiation
+        ├── providers.tf     # Provider configuration
+        └── vars.tf          # Environment variables
+```
+
+## Prerequisites
+
+### GCP Resources
+
+1. **GCP Project** with enabled APIs:
+   - Compute Engine API
+   - IAM API
+   - Secret Manager API
+   - Cloud Storage API
+
+2. **GCS Buckets**:
+   - Terraform state storage bucket
+   - Prefect artifact storage bucket
+
+3. **Reserved Global IP** (if using load balancer):
+   ```bash
+   gcloud compute addresses create staging-prefect-lb-ip \
+     --global \
+     --ip-version IPV4
+   ```
+
+4. **IAP OAuth Credentials** (if using IAP):
+   - Create OAuth consent screen
+   - Create OAuth 2.0 Client ID (Web application)
+
+### Local Requirements
+
+- Terraform >= 1.0
+- Google Cloud SDK (`gcloud`)
+- Appropriate GCP credentials configured
+
+## Configuration
+
+Create `envs/staging/terraform.tfvars`:
+
+```hcl
+# GCP Settings
+gcp_project    = "your-project-id"
+gcp_region     = "us-central1"
+gcp_zone       = "us-central1-a"
+
+# Instance Configuration
+instance_name      = "prefect-staging"
+machine_type       = "e2-medium"
+boot_disk_size_gb  = 60
+
+# Network
+subnet_cidr        = "10.0.16.0/20"
+vpn_ip_address     = "YOUR_VPN_IP"
+
+# Storage
+state_bucket_name  = "your-terraform-state-bucket"
+bucket_name        = "your-prefect-storage-bucket"
+
+# Load Balancer (optional)
+enable_load_balancer        = true
+reserved_prefect_lb_ip_name = "staging-prefect-lb-ip"
+prefect_domain              = "prefect.example.com"
+
+# IAP (optional)
+enable_iap                 = true
+iap_brand                  = "projects/PROJECT_NUMBER/brands/BRAND_ID"
+prefect_iap_client_id      = "YOUR_CLIENT_ID"
+prefect_iap_client_secret  = "YOUR_CLIENT_SECRET"
+authorized_users           = ["user@example.com"]
+
+# Secrets
+prefect_postgres_password = "YOUR_DB_PASSWORD"
+```
+
+### Feature Flags
+
+- `enable_load_balancer = false`: Direct VM access (HTTP only)
+- `enable_load_balancer = true`: Global LB with SSL
+- `enable_iap = true`: Adds IAP authentication layer
+
+## Deployment
+
+### Initial Setup
+
+```bash
+cd envs/staging
+terraform init
+```
+
+### Deploy Infrastructure
+
+```bash
+terraform plan
+terraform apply
+```
+
+### Post-Deployment
+
+1. **Wait for VM initialization** (~5-10 minutes):
+   ```bash
+   gcloud compute ssh {instance_name} --command "sudo tail -f /var/log/startup.log"
+   ```
+
+2. **Configure DNS** (if using load balancer):
+   - Point your domain to the load balancer IP from `terraform output load_balancer_ip`
+
+3. **Access Prefect UI**:
+   - **With LB**: `https://{environment}-{prefect_domain}`
+   - **Without LB**: `http://{instance_external_ip}:4200`
+
+## VM Runtime Environment
+
+The VM is configured with:
+
+- **Python Environment**: Python 3.13 with `uv` package manager
+- **Prefect Server**: Running on port 4200 (systemd service)
+- **Prefect Worker**: Test worker with "Test Flow Pool" (systemd service)
+- **Database**: PostgreSQL with dedicated `prefect` database
+- **User**: `prefect` system user with sudo access
+
+### Services
+
+View logs:
+```bash
+# Server logs
+gcloud compute ssh {instance_name} --command "sudo journalctl -u prefect-server -f"
+
+# Worker logs
+gcloud compute ssh {instance_name} --command "sudo journalctl -u prefect-test-worker -f"
+```
+
+## Security
+
+### Network Security
+
+- **SSH Access**: Restricted to IAP range (`35.235.240.0/20`) and VPN IP
+- **Prefect UI**: Only accessible via load balancer (if enabled)
+- **IAP Protection**: Optional OAuth-based authentication
+
+### Secrets Management
+
+All sensitive values are:
+- Marked as `sensitive` in Terraform
+- Stored in Secret Manager or passed as variables
+- Never committed to version control
+
+### IAM
+
+VM uses service account with minimal required permissions:
+- Storage bucket access (if needed for Prefect artifacts)
+
+## Monitoring & Health
+
+### Health Checks
+
+Load balancer health check configuration:
+- Endpoint: `/api/health`
+- Port: 4200
+- Interval: 30 seconds
+- Timeout: 10 seconds
+- Unhealthy threshold: 3 failures
+
+### Service Resilience
+
+Services automatically restart on failure:
+- 10-second restart delay
+- Unlimited restart attempts
+- Logs to systemd journal
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `instance_external_ip` | VM public IP address |
+| `instance_internal_ip` | VM private IP address |
+| `load_balancer_ip` | Global LB IP (if enabled) |
+| `prefect_url` | URL to access Prefect UI |
+| `prefect_iap_client_id` | IAP client ID (if enabled) |
+
+## Cleanup
+
+```bash
+cd envs/staging
+terraform destroy
+```
+
+**Warning**: This permanently deletes the VM, boot disk, network resources, and load balancer components.
+
+## Environment Management
+
+To create additional environments (e.g., production):
+
+1. Copy `envs/staging/` to `envs/production/`
+2. Update variables in `envs/production/terraform.tfvars`
+3. Change `environment` variable to `"production"`
+4. Deploy independently
+
+Each environment maintains separate Terraform state and GCP resources.
+
+## Troubleshooting
+
+### VM Not Responding
+
+```bash
+gcloud compute ssh {instance_name} --command "sudo tail -100 /var/log/startup.log"
+```
+
+### Service Not Starting
+
+```bash
+gcloud compute ssh {instance_name} --command "sudo systemctl status prefect-server"
+```
+
+### Load Balancer Health Check Failing
+
+1. Verify Prefect is running on port 4200
+2. Check firewall rules allow LB health check ranges
+3. Verify `/api/health` endpoint responds
+
+### IAP Access Denied
+
+1. Confirm user email in `authorized_users` list
+2. Verify IAP client credentials are correct
+3. Check IAP brand configuration
+
+## Module Documentation
+
+For detailed module documentation including all input variables and outputs, see [`modules/prefect-vm/README.md`](modules/prefect-vm/README.md).
