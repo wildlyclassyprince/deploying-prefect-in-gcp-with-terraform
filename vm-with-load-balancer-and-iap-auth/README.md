@@ -120,11 +120,3 @@ terraform init
 terraform apply
 ```
 
-## Key Differences from Top-Level README
-
-- **Module Implementation Details**: Shows conditional resource patterns, dynamic blocks, and templating
-- **Code Examples**: Actual Terraform code snippets from the module
-- **Architecture Patterns**: Explains the technical implementation choices
-- **Multi-Environment Strategy**: Details on how environments are isolated
-
-For deployment instructions and usage, see the [top-level README](../../README.md).
