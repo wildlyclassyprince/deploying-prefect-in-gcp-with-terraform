@@ -1,6 +1,24 @@
 # GCP Prefect Server Infrastructure
 
+![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.0-blue)
+![GCP](https://img.shields.io/badge/GCP-supported-4285F4?logo=google-cloud)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 Production-grade Terraform infrastructure for deploying a Prefect workflow orchestration server on Google Cloud Platform with optional global load balancing and Identity-Aware Proxy (IAP) authentication.
+
+## Why This Project Exists
+
+After inheriting a click-ops Prefect deployment running on a single VM with no authentication, scattered configs, and undocumented architecture, I rebuilt the infrastructure using Terraform with enterprise-grade security patterns.
+
+This repo demonstrates:
+- Migrating legacy infrastructure to IaC without downtime
+- Adding authentication to OSS tools that don't have it built-in
+- Production-ready patterns for GCP load balancing + IAP
+- Modular Terraform architecture for multi-environment deployments
+
+**The Problem:** Prefect OSS has no built-in RBAC. Running it with no auth meant anyone in the organization could access workflow orchestration.
+
+**The Solution:** GCP IAP provides identity-based access control at the load balancer level, no application changes required.
 
 ## Key Technical Highlights
 
@@ -278,6 +296,27 @@ gcloud compute ssh {instance_name} --command "sudo systemctl status prefect-serv
 1. Confirm user email in `authorized_users` list
 2. Verify IAP client credentials are correct
 3. Check IAP brand configuration
+
+## Estimated Monthly Costs
+
+Baseline configuration (us-central1, e2-medium instance):
+
+| Resource | USD/month | EUR/month* |
+|----------|-----------|------------|
+| Compute (e2-medium, 730 hrs) | $24.27 | €22.50 |
+| Load Balancer forwarding rules (2) | $18.00 | €16.70 |
+| Load Balancer data processing | $10-50 | €9-46 |
+| Cloud Storage (artifacts, minimal) | $1.00 | €0.90 |
+| **Total** | **$55-95** | **€51-88** |
+
+*EUR conversion at current rates (~€0.93/$1). GCP bills in USD; actual EUR cost depends on your payment method's exchange rate.
+
+### Cost Optimization Notes:
+- **IAP authentication is free** (no additional charge for identity-based access)
+- **europe-west regions** (Belgium, Netherlands) have similar pricing to us-central1
+- **e2-small** (~$12/€11 per month) works for light workloads
+- **Preemptible/Spot VMs** can reduce compute costs by ~60-80%, but require restart tolerance
+- **Load balancer** is the largest fixed cost - consider direct VM access for dev/test environments (`enable_load_balancer = false`)
 
 ## Module Documentation
 
