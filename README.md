@@ -1,6 +1,14 @@
 # GCP Prefect Server Infrastructure
 
-Terraform infrastructure for deploying a Prefect workflow orchestration server on Google Cloud Platform with optional global load balancing and Identity-Aware Proxy (IAP) authentication.
+Production-grade Terraform infrastructure for deploying a Prefect workflow orchestration server on Google Cloud Platform with optional global load balancing and Identity-Aware Proxy (IAP) authentication.
+
+## Key Technical Highlights
+
+- **Infrastructure as Code**: Modular Terraform architecture with reusable components and environment isolation
+- **Security-First Design**: IAP authentication, VPC isolation, least-privilege IAM, and firewall rules restricted to GCP service ranges
+- **Production-Ready**: Managed SSL certificates, health checks, auto-restart policies, and multi-environment support
+- **Cloud-Native**: Leverages GCP-managed services (Load Balancer, Cloud Storage, IAP) for reliability and scalability
+- **Feature Flags**: Conditional resource creation via Terraform count and dynamic blocks for flexible deployment patterns
 
 ## Overview
 
@@ -273,4 +281,4 @@ gcloud compute ssh {instance_name} --command "sudo systemctl status prefect-serv
 
 ## Module Documentation
 
-For detailed module documentation including all input variables and outputs, see [`modules/prefect-vm/README.md`](modules/prefect-vm/README.md).
+For detailed module documentation including all input variables and outputs, see [`vm-with-load-balancer-and-iap-auth/README.md`](vm-with-load-balancer-and-iap-auth/README.md).
