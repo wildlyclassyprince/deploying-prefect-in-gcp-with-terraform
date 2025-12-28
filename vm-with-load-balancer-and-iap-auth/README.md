@@ -9,7 +9,7 @@ vm-with-load-balancer-and-iap-auth/
 ├── modules/prefect-vm/        # Reusable Terraform module
 │   ├── instance.tf           # VM compute resource
 │   ├── network.tf            # VPC, subnets, static IPs
-│   ├── loadbalancer.tf       # Global LB, SSL, IAP (conditional)
+│   ├── loadbalancer.tf       # Global LB, SSL, IAP, Cloud Armor (conditional)
 │   ├── firewall.tf           # Security rules
 │   ├── iam.tf                # Service accounts
 │   ├── startup.sh.tpl        # VM initialization script
@@ -66,6 +66,19 @@ resource "google_iap_web_backend_service_iam_member" "prefect_access" {
   # ...
 }
 ```
+
+### Cloud Armor Security Policy
+
+A Cloud Armor security policy protects the load balancer using Google's preconfigured WAF rules:
+
+```hcl
+resource "google_compute_security_policy" "prefect_protection" {
+  name = "${var.environment}-prefect-protection"
+  # Rules block XSS, LFI, RCE, and protocol attacks
+}
+```
+
+The policy blocks common web attacks (XSS, local file inclusion, remote code execution, protocol attacks) with a final catch-all allow rule.
 
 ### Startup Script Templating
 
