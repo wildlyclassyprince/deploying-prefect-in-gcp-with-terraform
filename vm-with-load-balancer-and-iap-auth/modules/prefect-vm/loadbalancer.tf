@@ -123,3 +123,64 @@ resource "google_compute_url_map" "prefect_redirect_http_to_https" {
     strip_query            = false
   }
 }
+
+# Cloud armor
+resource "google_compute_security_policy" "prefect_protection" {
+  name = "${var.environment}-prefect-protection"
+
+  # Use Google's preconfigured WAF rules
+  rule {
+    action   = "deny(403)"
+    priority = 1000
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('xss-v33-stable')"
+      }
+    }
+    description = "Block XSS attacks"
+  }
+
+  rule {
+    action   = "deny(403)"
+    priority = 10001
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('lfi-v33-stable')"
+      }
+    }
+    description = "Block local file inclusion"
+  }
+
+  rule {
+    action   = "deny(403)"
+    priority = 1002
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('rce-v33-stable')"
+      }
+    }
+    description = "Block remote code execution"
+  }
+
+  rule {
+    action   = "deny(403)"
+    priority = 1003
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('protocolattack-v33-stable')"
+      }
+    }
+    description = "Block protocol attacks"
+  }
+
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+  }
+}
