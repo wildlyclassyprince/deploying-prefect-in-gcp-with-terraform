@@ -10,7 +10,7 @@ vm-with-load-balancer-and-iap-auth/
 │   ├── instance.tf           # VM compute resource
 │   ├── network.tf            # VPC, subnets, static IPs
 │   ├── loadbalancer.tf       # Global LB, SSL, IAP, Cloud Armor (conditional)
-│   ├── firewall.tf           # Security rules
+│   ├── firewall.tf           # Security rules (VPN conditional)
 │   ├── iam.tf                # Service accounts
 │   ├── startup.sh.tpl        # VM initialization script
 │   ├── vars.tf               # Module input variables
@@ -79,6 +79,19 @@ resource "google_compute_security_policy" "prefect_protection" {
 ```
 
 The policy blocks common web attacks (XSS, local file inclusion, remote code execution, protocol attacks) with a final catch-all allow rule.
+
+### VPN Firewall Configuration
+
+The VPN firewall rule is optional and controlled by `enable_vpn`:
+
+```hcl
+resource "google_compute_firewall" "allow_vpn" {
+  count = var.enable_vpn ? 1 : 0
+  # Allows SSH from specified VPN IP
+}
+```
+
+When `enable_vpn = false`, no VPN firewall rule is created. When enabled, you must provide `vpn_ip_address`.
 
 ### Startup Script Templating
 

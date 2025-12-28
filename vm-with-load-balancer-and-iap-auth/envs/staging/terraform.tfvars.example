@@ -11,6 +11,7 @@ boot_disk_size_gb = 120
 
 # Network
 subnet_cidr    = "some-random-ip-range"
+enable_vpn     = false
 vpn_ip_address = "some-random-ip"
 
 # Environment

@@ -53,10 +53,17 @@ variable "environment" {
   default     = "staging"
 }
 
+variable "enable_vpn" {
+  description = "Whether to create VPN firewall rule"
+  type        = bool
+  default     = false
+}
+
 variable "vpn_ip_address" {
   description = "The IP address of the vpn"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "bucket_name" {

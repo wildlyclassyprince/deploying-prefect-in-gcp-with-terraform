@@ -13,6 +13,7 @@ resource "google_compute_firewall" "allow_ssh" {
 }
 
 resource "google_compute_firewall" "allow_vpn" {
+  count       = var.enable_vpn ? 1 : 0
   name        = "${var.environment}-allow-vpn"
   network     = google_compute_network.vpc.name
   description = "Allow VPN traffic"

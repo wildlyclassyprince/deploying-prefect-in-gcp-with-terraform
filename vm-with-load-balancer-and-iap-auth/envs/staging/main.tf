@@ -15,6 +15,7 @@ module "prefect-vm" {
 
   # Network
   subnet_cidr    = var.subnet_cidr
+  enable_vpn     = var.enable_vpn
   vpn_ip_address = var.vpn_ip_address
 
   # Load balancer
