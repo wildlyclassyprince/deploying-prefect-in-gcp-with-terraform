@@ -40,7 +40,7 @@ sudo -u prefect -i <<EOF
   curl -LsSf https://astral.sh/uv/install.sh | sh
   export PATH="\$HOME/.local/bin:\$PATH"
   uv venv --python 3.13
-  . venv/bin/activate
+  . /home/prefect/.venv/bin/activate
 
   echo "Installing Prefect..."
   uv pip install prefect
@@ -56,6 +56,13 @@ sudo -u postgres psql -c "CREATE DATABASE prefect;"
 sudo -u postgres psql -c "CREATE USER prefect WITH PASSWORD '${prefect_postgres_password}';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE prefect TO prefect;"
 
+# Grant schema-level privileges (required for PostgreSQL 15+)
+sudo -u postgres psql -d prefect -c "GRANT ALL ON SCHEMA public TO prefect;"
+sudo -u postgres psql -d prefect -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO prefect;"
+sudo -u postgres psql -d prefect -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO prefect;"
+sudo -u postgres psql -d prefect -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO prefect;"
+sudo -u postgres psql -d prefect -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO prefect;"
+
 # Configure PostgreSQL to allow local connections
 sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/*/main/postgresql.conf
 
@@ -70,7 +77,7 @@ echo "PostgreSQL configured successfully for Prefect"
 # Setup environment variables
 cat > /etc/profile.d/prefect.sh << EOF
 # Prefect environment variables
-export PATH=/home/prefect/venv/bin:/usr/local/bin:/usr/bin:/bin
+export PATH=/home/prefect/.venv/bin:/usr/local/bin:/usr/bin:/bin
 export VIRTUAL_ENV=/home/prefect/venv
 export PREFECT_API_URL=http://localhost:4200/api
 export PREFECT_HOME=/home/prefect/.prefect
@@ -95,7 +102,7 @@ RestartSec=10
 WorkingDirectory=/home/prefect
 
 # Environment variables
-Environment=PATH=/home/prefect/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/home/prefect/.venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=VIRTUAL_ENV=/home/prefect/venv
 Environment=PREFECT_API_URL=http://localhost:4200/api
 Environment=PREFECT_HOME=/home/prefect/.prefect
@@ -106,7 +113,7 @@ ExecStartPre=/bin/bash -c 'mkdir -p /home/prefect/.prefect'
 ExecStartPre=/bin/bash -c 'chown -R prefect:prefect /home/prefect/.prefect'
 
 # Start Prefect server
-ExecStart=/home/prefect/venv/bin/prefect server start --host 0.0.0.0
+ExecStart=/home/prefect/.venv/bin/prefect server start --host 0.0.0.0
 
 # Restart on failure
 Restart=always
@@ -138,7 +145,7 @@ RestartSec=10
 WorkingDirectory=/home/prefect
 
 # Environment variables
-Environment=PATH=/home/prefect/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/home/prefect/.venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=VIRTUAL_ENV=/home/prefect/venv
 Environment=PREFECT_API_URL=http://localhost:4200/api
 Environment=PREFECT_HOME=/home/prefect/.prefect
@@ -146,8 +153,8 @@ Environment=PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect:${p
 
 # Start Prefect test worker
 # The sequence of commands matters: first create the pool, then the queue, before starting the worker
-ExecStartPre=/bin/bash -c 'source /home/prefect/venv/bin/activate && prefect work-pool create "Test Flow Pool" -t process && prefect work-queue pause "default" -p "Test Flow Pool" && prefect work-queue create "test_hourly" -p "Test Flow Pool" -l 5 -q 1'
-ExecStart=/bin/bash -c 'source /home/prefect/venv/bin/activate && prefect worker start --work-queue "test_hourly" -p "Test Flow Pool" -l 5'
+ExecStartPre=/bin/bash -c 'source /home/prefect/.venv/bin/activate && prefect work-pool create "Test Flow Pool" -t process && prefect work-queue pause "default" -p "Test Flow Pool" && prefect work-queue create "test_hourly" -p "Test Flow Pool" -l 5 -q 1'
+ExecStart=/bin/bash -c 'source /home/prefect/.venv/bin/activate && prefect worker start --work-queue "test_hourly" -p "Test Flow Pool" -l 5'
 
 
 # Restart on failure
