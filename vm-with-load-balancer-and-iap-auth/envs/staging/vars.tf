@@ -1,4 +1,4 @@
-variable "state_bucket_name" {
+variable "terraform_state_storage" {
   description = "Name of the GCS bucket to store the terraform state"
   type        = string
 }
@@ -59,20 +59,20 @@ variable "enable_vpn" {
   default     = false
 }
 
-variable "vpn_ip_address" {
-  description = "The IP address of the vpn"
+variable "vpn_ip" {
+  description = "The IP address of the VPN"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "bucket_name" {
-  description = "Name of the GCS bucket to mount"
+variable "artifact_storage" {
+  description = "Name of the GCS bucket for artifact storage"
   type        = string
 }
 
-variable "prefect_domain" {
-  description = "Domain for Prefect server"
+variable "domain" {
+  description = "Domain for the server"
   type        = string
 }
 
@@ -92,8 +92,8 @@ variable "enable_load_balancer" {
   default     = false
 }
 
-variable "reserved_prefect_lb_ip_name" {
-  description = "Name of the reserved IP address of the loadbalancer for the Prefect server"
+variable "load_balancer_ip_name" {
+  description = "Name of the reserved IP address for the load balancer"
   type        = string
   default     = "staging-prefect-lb-ip"
 }
@@ -104,20 +104,20 @@ variable "enable_iap" {
   default     = false
 }
 
-variable "prefect_iap_client_id" {
-  description = "IAP client ID for Prefect server"
+variable "iap_client_id" {
+  description = "IAP OAuth client ID"
   type        = string
   sensitive   = true
 }
 
-variable "prefect_iap_client_secret" {
-  description = "IAP client secret for Prefect server"
+variable "iap_client_secret" {
+  description = "IAP OAuth client secret"
   type        = string
   sensitive   = true
 }
 
-variable "prefect_postgres_password" {
-  description = "Password for the Prefect PostgreSQL database"
+variable "database_password" {
+  description = "Password for the PostgreSQL database"
   type        = string
   sensitive   = true
 }

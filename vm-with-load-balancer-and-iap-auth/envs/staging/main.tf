@@ -2,7 +2,7 @@ module "prefect-vm" {
   source = "../../modules/prefect-vm"
 
   # State bucket
-  state_bucket_name = var.state_bucket_name
+  terraform_state_storage = var.terraform_state_storage
 
   # Instance
   instance_name     = var.instance_name
@@ -11,22 +11,22 @@ module "prefect-vm" {
   machine_type      = var.machine_type
 
   # Mounted filesystem
-  bucket_name = var.bucket_name
+  artifact_storage = var.artifact_storage
 
   # Network
-  subnet_cidr    = var.subnet_cidr
-  enable_vpn     = var.enable_vpn
-  vpn_ip_address = var.vpn_ip_address
+  subnet_cidr = var.subnet_cidr
+  enable_vpn  = var.enable_vpn
+  vpn_ip      = var.vpn_ip
 
   # Load balancer
-  reserved_prefect_lb_ip_name = var.reserved_prefect_lb_ip_name
-  prefect_domain              = var.prefect_domain
-  iap_brand                   = var.iap_brand
-  authorized_users            = var.authorized_users
-  enable_load_balancer        = var.enable_load_balancer
-  enable_iap                  = var.enable_iap
-  prefect_iap_client_id       = var.prefect_iap_client_id
-  prefect_iap_client_secret   = var.prefect_iap_client_secret
+  load_balancer_ip_name = var.load_balancer_ip_name
+  domain                = var.domain
+  iap_brand             = var.iap_brand
+  authorized_users      = var.authorized_users
+  enable_load_balancer  = var.enable_load_balancer
+  enable_iap            = var.enable_iap
+  iap_client_id         = var.iap_client_id
+  iap_client_secret     = var.iap_client_secret
 
   # Location
   gcp_zone    = var.gcp_zone
@@ -36,8 +36,8 @@ module "prefect-vm" {
   # Environment
   environment = var.environment
 
-  # Prefect postgres
-  prefect_postgres_password = var.prefect_postgres_password
+  # Database
+  database_password = var.database_password
 
 }
 
@@ -48,7 +48,7 @@ resource "local_file" "default" {
   content = <<-EOT
         terraform {
             backend "gcs" {
-                bucket = "${var.state_bucket_name}"
+                bucket = "${var.terraform_state_storage}"
                 prefix = "terraform/state/${var.environment}"
             }
         }

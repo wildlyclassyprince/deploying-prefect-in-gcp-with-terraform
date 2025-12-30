@@ -18,5 +18,5 @@ resource "google_compute_address" "static_ip_address" {
 
 data "google_compute_global_address" "prefect_lb_ip" {
   count = var.enable_load_balancer ? 1 : 0
-  name  = var.reserved_prefect_lb_ip_name
+  name  = var.load_balancer_ip_name
 }

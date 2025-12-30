@@ -10,32 +10,32 @@ boot_disk_image   = "some-valid-boot-disk-image"
 boot_disk_size_gb = 120
 
 # Network
-subnet_cidr    = "some-random-ip-range"
-enable_vpn     = false
-vpn_ip_address = "some-random-ip"
+subnet_cidr = "some-random-ip-range"
+enable_vpn  = false
+vpn_ip      = "some-random-ip"
 
 # Environment
 environment = "some-random-environment"
 
 # State bucket
-state_bucket_name = "some-random-state-bucket"
+terraform_state_storage = "some-random-state-bucket"
 
 # Storage
-bucket_name = "some-random-prefect-storage-bucket"
+artifact_storage = "some-random-prefect-storage-bucket"
 
 # Load balancer
-enable_load_balancer        = true
-prefect_domain              = "some-random-domain"
-reserved_prefect_lb_ip_name = "some-random-lb-ip-name"
-enable_iap                  = true
-iap_brand                   = "some-random-brand"
-prefect_iap_client_id       = "some-random-id"
-prefect_iap_client_secret   = "some-random-secret"
+enable_load_balancer  = true
+domain                = "some-random-domain"
+load_balancer_ip_name = "some-random-lb-ip-name"
+enable_iap            = true
+iap_brand             = "some-random-brand"
+iap_client_id         = "some-random-id"
+iap_client_secret     = "some-random-secret"
 
 # Authorised users for IAP access
 authorized_users = [
   "some-random-user@some-random-domain.nothing"
 ]
 
-# Prefect postgres
-prefect_postgres_password = "some-random-test-password"
+# Database
+database_password = "some-random-test-password"

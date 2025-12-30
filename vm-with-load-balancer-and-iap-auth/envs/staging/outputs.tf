@@ -21,6 +21,6 @@ output "prefect_url" {
 
 output "iap_client_id" {
   description = "IAP OAuth client ID"
-  value       = module.prefect-vm.prefect_iap_client_id
+  value       = module.prefect-vm.iap_client_id
   sensitive   = true
 }

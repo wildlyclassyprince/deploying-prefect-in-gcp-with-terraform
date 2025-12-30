@@ -22,7 +22,7 @@ resource "google_compute_firewall" "allow_vpn" {
     protocol = "tcp"
     ports    = ["22"]
   }
-  source_ranges = ["${var.vpn_ip_address}/32"]
+  source_ranges = ["${var.vpn_ip}/32"]
   target_tags   = ["${var.environment}-vm", "prefect", "vpn"]
 }
 

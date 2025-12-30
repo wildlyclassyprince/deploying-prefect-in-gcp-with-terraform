@@ -23,11 +23,11 @@ resource "google_compute_instance" "vm_instance" {
 
   metadata_startup_script = templatefile("${path.module}/startup.sh.tpl", {
     environment               = var.environment
-    prefect_postgres_password = var.prefect_postgres_password
+    prefect_postgres_password = var.database_password
   })
 
   metadata = {
-    bucket-name = var.bucket_name
+    bucket-name = var.artifact_storage
   }
 
   service_account {

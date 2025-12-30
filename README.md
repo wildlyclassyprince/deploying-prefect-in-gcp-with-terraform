@@ -118,27 +118,27 @@ machine_type       = "e2-medium"
 boot_disk_size_gb  = 60
 
 # Network
-subnet_cidr        = "10.0.16.0/20"
-vpn_ip_address     = "YOUR_VPN_IP"
+subnet_cidr = "10.0.16.0/20"
+vpn_ip      = "YOUR_VPN_IP"
 
 # Storage
-state_bucket_name  = "your-terraform-state-bucket"
-bucket_name        = "your-prefect-storage-bucket"
+terraform_state_storage = "your-terraform-state-bucket"
+artifact_storage        = "your-prefect-storage-bucket"
 
 # Load Balancer (optional)
-enable_load_balancer        = true
-reserved_prefect_lb_ip_name = "staging-prefect-lb-ip"
-prefect_domain              = "prefect.example.com"
+enable_load_balancer  = true
+load_balancer_ip_name = "staging-prefect-lb-ip"
+domain                = "prefect.example.com"
 
 # IAP (optional)
-enable_iap                 = true
-iap_brand                  = "projects/PROJECT_NUMBER/brands/BRAND_ID"
-prefect_iap_client_id      = "YOUR_CLIENT_ID"
-prefect_iap_client_secret  = "YOUR_CLIENT_SECRET"
-authorized_users           = ["user@example.com"]
+enable_iap        = true
+iap_brand         = "projects/PROJECT_NUMBER/brands/BRAND_ID"
+iap_client_id     = "YOUR_CLIENT_ID"
+iap_client_secret = "YOUR_CLIENT_SECRET"
+authorized_users  = ["user@example.com"]
 
-# Secrets
-prefect_postgres_password = "YOUR_DB_PASSWORD"
+# Database
+database_password = "YOUR_DB_PASSWORD"
 ```
 
 ### Feature Flags
@@ -244,7 +244,7 @@ Services automatically restart on failure:
 | `instance_internal_ip` | VM private IP address |
 | `load_balancer_ip` | Global LB IP (if enabled) |
 | `prefect_url` | URL to access Prefect UI |
-| `prefect_iap_client_id` | IAP client ID (if enabled) |
+| `iap_client_id` | IAP client ID (if enabled) |
 
 ## Cleanup
 

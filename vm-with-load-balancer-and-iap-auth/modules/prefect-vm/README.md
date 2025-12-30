@@ -48,18 +48,18 @@ This module creates the following resources:
 | boot_disk_image | Machine boot disk image | `string` | n/a | yes |
 | boot_disk_size_gb | Machine boot disk size in GB | `number` | n/a | yes |
 | subnet_cidr | CIDR range for subnet | `string` | n/a | yes |
-| vpn_ip_address | The IP address of the VPN | `string` | n/a | yes |
-| state_bucket_name | Name of the GCS bucket to store terraform state | `string` | n/a | yes |
-| bucket_name | Name of the GCS bucket for Prefect storage | `string` | n/a | yes |
-| prefect_postgres_password | Password for the Prefect PostgreSQL database | `string` | n/a | yes |
+| vpn_ip | The IP address of the VPN | `string` | n/a | yes |
+| terraform_state_storage | Name of the GCS bucket to store terraform state | `string` | n/a | yes |
+| artifact_storage | Name of the GCS bucket for artifact storage | `string` | n/a | yes |
+| database_password | Password for the PostgreSQL database | `string` | n/a | yes |
 | environment | Environment name (staging, production) | `string` | `"staging"` | no |
-| enable_load_balancer | Whether to create the load balancer for Prefect server | `bool` | `false` | no |
-| reserved_prefect_lb_ip_name | Name of the reserved IP address for the load balancer | `string` | `"staging-prefect-lb-ip"` | no |
-| prefect_domain | Domain for Prefect server | `string` | n/a | yes |
-| enable_iap | Whether to enable IAP for the Prefect server | `bool` | `false` | no |
-| iap_brand | IAP brand for Prefect server | `string` | n/a | yes |
-| prefect_iap_client_id | IAP client ID for Prefect server | `string` | n/a | yes |
-| prefect_iap_client_secret | IAP client secret for Prefect server | `string` | n/a | yes |
+| enable_load_balancer | Whether to create the load balancer  | `bool` | `false` | no |
+| load_balancer_ip_name | Name of the reserved IP address for the load balancer | `string` | `"staging-prefect-lb-ip"` | no |
+| domain | Domain for the server | `string` | n/a | yes |
+| enable_iap | Whether to enable IAP  | `bool` | `false` | no |
+| iap_brand | IAP brand  | `string` | n/a | yes |
+| iap_client_id | IAP OAuth client ID | `string` | n/a | yes |
+| iap_client_secret | IAP OAuth client secret | `string` | n/a | yes |
 | authorized_users | List of authorized users for IAP access | `list(string)` | n/a | yes |
 
 ## Outputs
@@ -70,7 +70,7 @@ This module creates the following resources:
 | instance_internal_ip | Internal IP of the instance |
 | load_balancer_ip | IP address of the load balancer (if enabled) |
 | prefect_url | URL to access Prefect UI |
-| prefect_iap_client_id | IAP OAuth client ID (if IAP enabled) |
+| iap_client_id | IAP OAuth client ID (if IAP enabled) |
 
 ## Usage
 
@@ -91,28 +91,28 @@ module "prefect-vm" {
 
   # Network
   subnet_cidr    = "10.0.16.0/20"
-  vpn_ip_address = "1.2.3.4"
+  vpn_ip = "1.2.3.4"
 
   # Storage
-  state_bucket_name = "my-terraform-state"
-  bucket_name       = "my-prefect-storage"
+  terraform_state_storage = "my-terraform-state"
+  artifact_storage       = "my-prefect-storage"
 
   # Load Balancer
   enable_load_balancer        = true
-  reserved_prefect_lb_ip_name = "prefect-lb-ip"
-  prefect_domain              = "prefect.example.com"
+  load_balancer_ip_name = "prefect-lb-ip"
+  domain              = "prefect.example.com"
 
   # IAP
   enable_iap                = true
   iap_brand                 = "projects/123456789/brands/123456789"
-  prefect_iap_client_id     = "client-id.apps.googleusercontent.com"
-  prefect_iap_client_secret = "client-secret"
+  iap_client_id     = "client-id.apps.googleusercontent.com"
+  iap_client_secret = "client-secret"
   authorized_users          = ["user@example.com"]
 
   # Environment
   environment = "staging"
 
-  # Secrets
-  prefect_postgres_password = "secure-password"
+  # Database
+  database_password = "secure-password"
 }
 ```

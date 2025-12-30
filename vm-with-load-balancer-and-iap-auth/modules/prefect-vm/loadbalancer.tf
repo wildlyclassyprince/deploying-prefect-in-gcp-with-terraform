@@ -47,8 +47,8 @@ resource "google_compute_backend_service" "prefect_backend_service" {
   dynamic "iap" {
     for_each = var.enable_iap ? [1] : []
     content {
-      oauth2_client_id     = var.prefect_iap_client_id
-      oauth2_client_secret = var.prefect_iap_client_secret
+      oauth2_client_id     = var.iap_client_id
+      oauth2_client_secret = var.iap_client_secret
     }
   }
 }
@@ -97,7 +97,7 @@ resource "google_compute_managed_ssl_certificate" "prefect_ssl_certificate" {
   count = var.enable_load_balancer ? 1 : 0
   name  = "${var.environment}-prefect-ssl-certificate"
   managed {
-    domains = ["${var.environment}-${var.prefect_domain}"]
+    domains = ["${var.environment}-${var.domain}"]
   }
   lifecycle {
     create_before_destroy = true
