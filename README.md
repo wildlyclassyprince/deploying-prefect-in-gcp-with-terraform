@@ -40,19 +40,14 @@ This project provisions:
 
 ## Architecture
 
-```
-Internet
-    ↓
-Global Load Balancer (HTTPS) → Managed SSL Certificate
-    ↓
-IAP Authentication (optional)
-    ↓
-Backend Service → Instance Group
-    ↓
-VM Instance (Prefect Server:4200)
-    ↓
-PostgreSQL Database
-```
+![GCP Prefect Infrastructure Architecture](assets/vm-with-load-balancer-and-iap.png)
+
+The infrastructure consists of:
+- **Global Load Balancer** with managed SSL certificates for HTTPS termination
+- **IAP Authentication** (optional) providing zero-trust access control
+- **Backend Service** routing traffic to the Prefect instance
+- **VM Instance** running Prefect Server on port 4200 with PostgreSQL backend
+- **VPC networking** with firewall rules restricting access to authorized sources
 
 ## Project Structure
 
