@@ -205,6 +205,9 @@ gcloud compute ssh {instance_name} --command "sudo journalctl -u prefect-test-wo
 - **SSH Access**: Restricted to IAP range (`35.235.240.0/20`) and VPN IP
 - **Prefect UI**: Only accessible via load balancer (if enabled)
 - **IAP Protection**: Optional OAuth-based authentication
+- **Cloud Armor WAF**: Protection against XSS, LFI, RCE, null byte injection, and URL length attacks
+- **Rate Limiting**: 100 requests/minute per IP with 5-minute ban on exceed
+- **DDoS Protection**: Adaptive Layer 7 DDoS defense with ML-based detection
 
 ### Secrets Management
 
@@ -217,8 +220,29 @@ All sensitive values are:
 
 VM uses service account with minimal required permissions:
 - Storage bucket access (if needed for Prefect artifacts)
+- Cloud Logging write access
+- Cloud Monitoring metric write access
 
 ## Monitoring & Health
+
+### Cloud Operations Integration
+
+All VM logs and metrics are automatically collected via Google Cloud Operations Agent:
+- **Prefect Server & Worker logs**: Real-time collection from systemd journal
+- **PostgreSQL logs**: Database activity and errors
+- **System metrics**: CPU, memory, disk I/O, network (60s intervals)
+- **Security logs**: Cloud Armor blocked requests and rate limiting events
+
+For detailed logging queries and monitoring setup, see [`vm-with-load-balancer-and-iap-auth/MONITORING.md`](vm-with-load-balancer-and-iap-auth/MONITORING.md).
+
+#### Quick Log Access
+```bash
+# View Prefect server logs in Cloud Logging
+gcloud logging read "resource.type=gce_instance AND log_id(\"prefect-server\")" --limit=50
+
+# View blocked security threats
+gcloud logging read "resource.type=http_load_balancer AND jsonPayload.enforcedSecurityPolicy.outcome=\"DENY\"" --limit=50
+```
 
 ### Health Checks
 
@@ -234,7 +258,7 @@ Load balancer health check configuration:
 Services automatically restart on failure:
 - 10-second restart delay
 - Unlimited restart attempts
-- Logs to systemd journal
+- Logs to systemd journal and Cloud Logging
 
 ## Outputs
 

@@ -10,6 +10,12 @@ echo "Starting startup script at $(date)"
 apt-get update
 apt-get upgrade -y
 
+# Install Google Cloud Ops Agent (replaces legacy logging/monitoring agents)
+echo "Installing Google Cloud Ops Agent..."
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+bash add-google-cloud-ops-agent-repo.sh --also-install
+rm add-google-cloud-ops-agent-repo.sh
+
 # Install Docker
 apt-get install -y \
     apt-transport-https \
@@ -73,6 +79,83 @@ echo "local    prefect    prefect    md5" >> /etc/postgresql/*/main/pg_hba.conf
 systemctl restart postgresql
 
 echo "PostgreSQL configured successfully for Prefect"
+
+# Configure Cloud Ops Agent to collect Prefect logs
+cat > /etc/google-cloud-ops-agent/config.yaml << 'OPSCONFIG'
+logging:
+  receivers:
+    # Collect Prefect server logs from systemd journal
+    prefect_server:
+      type: systemd_journald
+      units:
+        - prefect-server
+    
+    # Collect Prefect worker logs from systemd journal
+    prefect_worker:
+      type: systemd_journald
+      units:
+        - prefect-test-worker
+    
+    # Collect PostgreSQL logs
+    postgresql:
+      type: files
+      include_paths:
+        - /var/log/postgresql/postgresql-*.log
+    
+    # Collect startup script logs
+    startup_logs:
+      type: files
+      include_paths:
+        - /var/log/startup.log
+  
+  processors:
+    # Parse Prefect logs as JSON if possible
+    prefect_parser:
+      type: parse_json
+      field: message
+      time_key: timestamp
+      time_format: "%Y-%m-%dT%H:%M:%S"
+  
+  service:
+    pipelines:
+      prefect_server_pipeline:
+        receivers:
+          - prefect_server
+        processors:
+          - prefect_parser
+      
+      prefect_worker_pipeline:
+        receivers:
+          - prefect_worker
+        processors:
+          - prefect_parser
+      
+      postgresql_pipeline:
+        receivers:
+          - postgresql
+      
+      startup_pipeline:
+        receivers:
+          - startup_logs
+
+metrics:
+  receivers:
+    # Collect host metrics (CPU, memory, disk, network)
+    hostmetrics:
+      type: hostmetrics
+      collection_interval: 60s
+  
+  service:
+    pipelines:
+      default_pipeline:
+        receivers:
+          - hostmetrics
+OPSCONFIG
+
+# Restart Ops Agent to apply configuration
+echo "Restarting Cloud Ops Agent with Prefect logging configuration..."
+systemctl restart google-cloud-ops-agent
+echo "Cloud Ops Agent configured successfully"
 
 # Setup environment variables
 cat > /etc/profile.d/prefect.sh << EOF
