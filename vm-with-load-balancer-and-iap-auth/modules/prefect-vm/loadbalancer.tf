@@ -38,6 +38,15 @@ resource "google_compute_backend_service" "prefect_backend_service" {
   port_name     = "prefect-ui"
   protocol      = "HTTP"
   timeout_sec   = 30
+  
+  # Attach Cloud Armor security policy
+  security_policy = google_compute_security_policy.prefect_protection[0].id
+
+  # Enable logging for security monitoring
+  log_config {
+    enable      = true
+    sample_rate = 1.0
+  }
 
   backend {
     group = google_compute_instance_group.prefect_group[0].id
@@ -71,7 +80,7 @@ resource "google_iap_web_backend_service_iam_member" "prefect_access" {
 resource "google_compute_target_http_proxy" "prefect_http_proxy" {
   count   = var.enable_load_balancer ? 1 : 0
   name    = "${var.environment}-prefect-http-proxy"
-  url_map = google_compute_url_map.prefect_url_map[0].id
+  url_map = google_compute_url_map.prefect_redirect_http_to_https[0].id
 }
 
 resource "google_compute_global_forwarding_rule" "prefect_http_forwarding_rule" {
@@ -124,9 +133,17 @@ resource "google_compute_url_map" "prefect_redirect_http_to_https" {
   }
 }
 
-# Cloud armor
+# Cloud Armor security policy
 resource "google_compute_security_policy" "prefect_protection" {
-  name = "${var.environment}-prefect-protection"
+  count = var.enable_load_balancer ? 1 : 0
+  name  = "${var.environment}-prefect-protection"
+
+  # Enable adaptive protection (ML-based DDoS detection)
+  adaptive_protection_config {
+    layer_7_ddos_defense_config {
+      enable = true
+    }
+  }
 
   # Use Google's preconfigured WAF rules
   rule {
@@ -173,6 +190,53 @@ resource "google_compute_security_policy" "prefect_protection" {
     description = "Block protocol attacks"
   }
 
+  # Block null byte injection attacks
+  rule {
+    action   = "deny(403)"
+    priority = 1004
+    match {
+      expr {
+        expression = "request.path.contains('%00') || request.query.contains('%00') || request.headers['user-agent'].contains('%00')"
+      }
+    }
+    description = "Block null byte injection attacks"
+  }
+
+  # Block excessively long URLs (potential buffer overflow or DoS)
+  rule {
+    action   = "deny(403)"
+    priority = 1005
+    match {
+      expr {
+        expression = "size(request.path) > 2048 || size(request.query) > 4096"
+      }
+    }
+    description = "Block excessively long URLs"
+  }
+
+  # Rate limiting rule - prevent abuse
+  rule {
+    action   = "rate_based_ban"
+    priority = 1006
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    description = "Rate limit requests per IP"
+    rate_limit_options {
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+      enforce_on_key = "IP"
+      rate_limit_threshold {
+        count        = 100
+        interval_sec = 60
+      }
+      ban_duration_sec = 300
+    }
+  }
+
   rule {
     action   = "allow"
     priority = 2147483647
@@ -182,5 +246,6 @@ resource "google_compute_security_policy" "prefect_protection" {
         src_ip_ranges = ["*"]
       }
     }
+    description = "Default allow rule"
   }
 }

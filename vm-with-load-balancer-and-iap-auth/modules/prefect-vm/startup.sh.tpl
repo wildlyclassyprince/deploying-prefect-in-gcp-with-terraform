@@ -63,8 +63,8 @@ sudo -u postgres psql -d prefect -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SC
 sudo -u postgres psql -d prefect -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO prefect;"
 sudo -u postgres psql -d prefect -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO prefect;"
 
-# Configure PostgreSQL to allow local connections
-sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" /etc/postgresql/*/main/postgresql.conf
+# Configure PostgreSQL to only listen on localhost for security
+sed -i "s/#listen_addresses = 'localhost'/listen_addresses = 'localhost'/" /etc/postgresql/*/main/postgresql.conf
 
 # Update pg_hba.conf to allow password authentication for prefect user
 echo "local    prefect    prefect    md5" >> /etc/postgresql/*/main/pg_hba.conf
