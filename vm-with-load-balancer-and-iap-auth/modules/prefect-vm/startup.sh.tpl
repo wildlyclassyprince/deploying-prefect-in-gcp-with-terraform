@@ -12,7 +12,13 @@ apt-get upgrade -y
 
 # Install Google Cloud Ops Agent (replaces legacy logging/monitoring agents)
 echo "Installing Google Cloud Ops Agent..."
-curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+# Download from official Google source over HTTPS
+curl -sSfO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+# Verify it's a bash script (basic sanity check)
+if ! head -n 1 add-google-cloud-ops-agent-repo.sh | grep -q '^#!/bin/bash'; then
+  echo "ERROR: Downloaded Ops Agent script is not a valid bash script"
+  exit 1
+fi
 bash add-google-cloud-ops-agent-repo.sh --also-install
 rm add-google-cloud-ops-agent-repo.sh
 
@@ -33,17 +39,35 @@ apt-get install -y \
     postgresql \
     postgresql-contrib
 
-# Create prefect user with admin permissions
+# Create prefect user without sudo access (principle of least privilege)
 echo "Create 'prefect' user ..."
-useradd -m -s /bin/bash -G sudo prefect
+useradd -m -s /bin/bash prefect
 echo "prefect:$(openssl rand -base64 32)" | chpasswd
+
+# Create limited sudoers file for specific systemctl commands only (if needed)
+# This allows prefect to restart its own services without full sudo
+cat > /etc/sudoers.d/prefect << 'SUDOERS'
+prefect ALL=(ALL) NOPASSWD: /bin/systemctl restart prefect-server
+prefect ALL=(ALL) NOPASSWD: /bin/systemctl restart prefect-test-worker
+prefect ALL=(ALL) NOPASSWD: /bin/systemctl status prefect-server
+prefect ALL=(ALL) NOPASSWD: /bin/systemctl status prefect-test-worker
+SUDOERS
+chmod 0440 /etc/sudoers.d/prefect
 
 # Set up Python environment for prefect user
 echo "Setting up Python environment..."
 echo "Switching to prefect user..."
 sudo -u prefect -i <<EOF
   echo "Installing and setting up uv ..."
-  curl -LsSf https://astral.sh/uv/install.sh | sh
+  # Download uv installer with verification
+  curl -LsSf https://astral.sh/uv/install.sh -o /tmp/uv-install.sh
+  # Basic verification that it's a shell script
+  if ! head -n 1 /tmp/uv-install.sh | grep -qE '^#!/(bin/sh|usr/bin/env sh)'; then
+    echo "ERROR: Downloaded uv installer is not a valid shell script"
+    exit 1
+  fi
+  sh /tmp/uv-install.sh
+  rm /tmp/uv-install.sh
   export PATH="\$HOME/.local/bin:\$PATH"
   uv venv --python 3.13
   . /home/prefect/.venv/bin/activate
@@ -57,9 +81,13 @@ EOF
 systemctl start postgresql
 systemctl enable postgresql
 
+# Fetch PostgreSQL password from Secret Manager
+echo "Fetching database password from Secret Manager..."
+DB_PASSWORD=$(gcloud secrets versions access latest --secret="${db_password_secret}" --project="${gcp_project}")
+
 # Create a PostgreSQL database for Prefect
 sudo -u postgres psql -c "CREATE DATABASE prefect;"
-sudo -u postgres psql -c "CREATE USER prefect WITH PASSWORD '${prefect_postgres_password}';"
+sudo -u postgres psql -c "CREATE USER prefect WITH PASSWORD '$DB_PASSWORD';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE prefect TO prefect;"
 
 # Grant schema-level privileges (required for PostgreSQL 15+)
@@ -169,7 +197,7 @@ sudo chmod +x /etc/profile.d/prefect.sh
 
 
 # Run Prefect server as a systemd service
-cat > /etc/systemd/system/prefect-server.service << EOF
+cat > /etc/systemd/system/prefect-server.service << 'EOF'
 [Unit]
 Description=Prefect Server
 After=network.target
@@ -189,14 +217,13 @@ Environment=PATH=/home/prefect/.venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=VIRTUAL_ENV=/home/prefect/venv
 Environment=PREFECT_API_URL=http://localhost:4200/api
 Environment=PREFECT_HOME=/home/prefect/.prefect
-Environment=PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect:${prefect_postgres_password}@localhost:5432/prefect
 
-# Pre-start cleanup commands
+# Pre-start commands: create directory and fetch DB password from Secret Manager
 ExecStartPre=/bin/bash -c 'mkdir -p /home/prefect/.prefect'
 ExecStartPre=/bin/bash -c 'chown -R prefect:prefect /home/prefect/.prefect'
 
-# Start Prefect server
-ExecStart=/home/prefect/.venv/bin/prefect server start --host 0.0.0.0
+# Start Prefect server with DB connection URL fetched from Secret Manager
+ExecStart=/bin/bash -c 'DB_PASS=$(gcloud secrets versions access latest --secret="${db_password_secret}" --project="${gcp_project}") && export PREFECT_API_DATABASE_CONNECTION_URL="postgresql+asyncpg://prefect:$DB_PASS@localhost:5432/prefect" && /home/prefect/.venv/bin/prefect server start --host 0.0.0.0'
 
 # Restart on failure
 Restart=always
@@ -212,7 +239,7 @@ WantedBy=multi-user.target
 EOF
 
 # Prefect test worker
-cat > /etc/systemd/system/prefect-test-worker.service << EOF
+cat > /etc/systemd/system/prefect-test-worker.service << 'EOF'
 [Unit]
 Description=Prefect Test Worker
 After=network.target.prefect-server.service
@@ -232,12 +259,11 @@ Environment=PATH=/home/prefect/.venv/bin:/usr/local/bin:/usr/bin:/bin
 Environment=VIRTUAL_ENV=/home/prefect/venv
 Environment=PREFECT_API_URL=http://localhost:4200/api
 Environment=PREFECT_HOME=/home/prefect/.prefect
-Environment=PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://prefect:${prefect_postgres_password}@localhost:5432/prefect
 
-# Start Prefect test worker
+# Start Prefect test worker with DB password from Secret Manager
 # The sequence of commands matters: first create the pool, then the queue, before starting the worker
-ExecStartPre=/bin/bash -c 'source /home/prefect/.venv/bin/activate && prefect work-pool create "Test Flow Pool" -t process && prefect work-queue pause "default" -p "Test Flow Pool" && prefect work-queue create "test_hourly" -p "Test Flow Pool" -l 5 -q 1'
-ExecStart=/bin/bash -c 'source /home/prefect/.venv/bin/activate && prefect worker start --work-queue "test_hourly" -p "Test Flow Pool" -l 5'
+ExecStartPre=/bin/bash -c 'DB_PASS=$(gcloud secrets versions access latest --secret="${db_password_secret}" --project="${gcp_project}") && export PREFECT_API_DATABASE_CONNECTION_URL="postgresql+asyncpg://prefect:$DB_PASS@localhost:5432/prefect" && source /home/prefect/.venv/bin/activate && prefect work-pool create "Test Flow Pool" -t process && prefect work-queue pause "default" -p "Test Flow Pool" && prefect work-queue create "test_hourly" -p "Test Flow Pool" -l 5 -q 1'
+ExecStart=/bin/bash -c 'DB_PASS=$(gcloud secrets versions access latest --secret="${db_password_secret}" --project="${gcp_project}") && export PREFECT_API_DATABASE_CONNECTION_URL="postgresql+asyncpg://prefect:$DB_PASS@localhost:5432/prefect" && source /home/prefect/.venv/bin/activate && prefect worker start --work-queue "test_hourly" -p "Test Flow Pool" -l 5'
 
 
 # Restart on failure

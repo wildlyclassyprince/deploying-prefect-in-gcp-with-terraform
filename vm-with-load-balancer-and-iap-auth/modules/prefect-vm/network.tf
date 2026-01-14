@@ -9,6 +9,8 @@ resource "google_compute_subnetwork" "subnet" {
   region        = var.gcp_region
   network       = google_compute_network.vpc.id
 
+  # Enable Private Google Access so VMs can reach GCP APIs without public IPs
+  private_ip_google_access = true
 }
 
 resource "google_compute_address" "static_ip_address" {

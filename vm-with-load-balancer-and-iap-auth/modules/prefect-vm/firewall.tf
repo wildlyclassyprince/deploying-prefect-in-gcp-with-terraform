@@ -45,3 +45,21 @@ resource "google_compute_firewall" "allow_load_balancer_backend" {
   ]
   target_tags = ["${var.environment}-vm", "prefect", "lb-backend"]
 }
+
+# Deny direct internet access to Prefect UI (port 4200)
+# This ensures Prefect can only be accessed through the load balancer
+resource "google_compute_firewall" "deny_direct_prefect_access" {
+  name        = "${var.environment}-deny-direct-prefect-access"
+  network     = google_compute_network.vpc.name
+  description = "Block direct internet access to Prefect UI port 4200"
+  priority    = 900 # Higher priority (lower number) than default allow rules
+
+  deny {
+    protocol = "tcp"
+    ports    = ["4200"]
+  }
+
+  # Block from all sources except the allowed LB/IAP ranges
+  source_ranges = ["0.0.0.0/0"]
+  target_tags   = ["${var.environment}-vm", "prefect"]
+}

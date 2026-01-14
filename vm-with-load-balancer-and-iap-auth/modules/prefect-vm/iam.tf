@@ -24,3 +24,10 @@ resource "google_project_iam_member" "prefect_vm_trace" {
   role    = "roles/cloudtrace.agent"
   member  = "serviceAccount:${google_service_account.prefect_vm_sa.email}"
 }
+
+# Grant Secret Manager access for database password
+resource "google_project_iam_member" "prefect_vm_secret_accessor" {
+  project = var.gcp_project
+  role    = "roles/secretmanager.secretAccessor"
+  member  = "serviceAccount:${google_service_account.prefect_vm_sa.email}"
+}

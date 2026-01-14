@@ -190,6 +190,17 @@ resource "google_compute_security_policy" "prefect_protection" {
     description = "Block protocol attacks"
   }
 
+  rule {
+    action   = "deny(403)"
+    priority = 1007
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('sqli-v33-stable')"
+      }
+    }
+    description = "Block SQL injection attacks"
+  }
+
   # Block null byte injection attacks
   rule {
     action   = "deny(403)"

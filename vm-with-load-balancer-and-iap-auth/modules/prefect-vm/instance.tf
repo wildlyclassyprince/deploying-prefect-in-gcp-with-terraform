@@ -22,8 +22,9 @@ resource "google_compute_instance" "vm_instance" {
   }
 
   metadata_startup_script = templatefile("${path.module}/startup.sh.tpl", {
-    environment               = var.environment
-    prefect_postgres_password = var.database_password
+    environment         = var.environment
+    gcp_project         = var.gcp_project
+    db_password_secret  = google_secret_manager_secret.prefect_db_password.secret_id
   })
 
   metadata = {
@@ -31,8 +32,14 @@ resource "google_compute_instance" "vm_instance" {
   }
 
   service_account {
-    email  = google_service_account.prefect_vm_sa.email
-    scopes = ["cloud-platform"]
+    email = google_service_account.prefect_vm_sa.email
+    # Use specific scopes instead of overly-permissive cloud-platform
+    scopes = [
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring.write",
+      "https://www.googleapis.com/auth/trace.append",
+      "https://www.googleapis.com/auth/devstorage.read_write", # For GCS artifact storage
+    ]
   }
 
   tags = ["${var.environment}-vm", "prefect", "ssh", "vpn", "web", "lb-backend"]
